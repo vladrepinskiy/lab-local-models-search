@@ -5,6 +5,7 @@
 ## 🎯 High-Level Purpose
 
 This is an educational/experimental application that allows users to:
+
 - Seed a local database with fake documents
 - Compare search results across different search methods simultaneously
 - Run SQL queries directly in the browser via an embedded REPL
@@ -15,6 +16,7 @@ This is an educational/experimental application that allows users to:
 ## 📦 Tech Stack
 
 ### Core
+
 - **Framework**: React 19.2 with TypeScript
 - **Build Tool**: Vite (using rolldown-vite 7.2.5)
 - **Package Manager**: Bun
@@ -22,6 +24,7 @@ This is an educational/experimental application that allows users to:
 - **Database**: PGlite 0.3.14 (PostgreSQL in WebAssembly)
 
 ### Key Dependencies
+
 - `@electric-sql/pglite` - In-browser PostgreSQL database
 - `@electric-sql/pglite-repl` - Interactive SQL console component
 - `@faker-js/faker` - Generate realistic fake data for seeding
@@ -29,6 +32,7 @@ This is an educational/experimental application that allows users to:
 - `babel-plugin-react-compiler` - Automatic React optimizations
 
 ### Dev Tools
+
 - TypeScript 5.9.3
 - ESLint 9.39.1
 - Prettier 3.7.3
@@ -80,6 +84,7 @@ src/
 ### Search Architecture
 
 **Current Implementation**:
+
 - **Keyword Search**: PostgreSQL GIN full-text search (working)
 - **Vector Search**: Placeholder for embedding-based similarity search
 - **LLM Search**: Placeholder for LLM-powered semantic search
@@ -91,11 +96,12 @@ All three searches run **in parallel** when the user clicks "Search All".
 ### Code Style
 
 1. **const arrow functions everywhere** - No `function` keyword
+
    ```typescript
    // ✅ Correct
    export const MyComponent = () => { ... }
    const myFunction = () => { ... }
-   
+
    // ❌ Avoid
    export function MyComponent() { ... }
    function myFunction() { ... }
@@ -165,6 +171,7 @@ bun run preview    # Preview production build
 ### Deployment
 
 **GitHub Actions** (`.github/workflows/deploy.yml`):
+
 - Triggers on push to `main` branch
 - Builds the app using Bun
 - Deploys to `deploy` branch
@@ -175,11 +182,13 @@ bun run preview    # Preview production build
 ## 🔮 Future Enhancements
 
 ### Planned (Stubs Already Exist)
+
 1. **Vector Search**: Integrate embeddings model + pgvector
 2. **LLM Search**: Integrate web-llm for client-side LLM inference
 3. **Hybrid Search**: Combine keyword + vector for best results
 
 ### Potential Additions
+
 - Document upload functionality
 - Export search results
 - Search history
@@ -189,18 +198,21 @@ bun run preview    # Preview production build
 ## 💡 Key Insights
 
 ### Why PGlite?
+
 - **No backend needed** - runs entirely in browser
 - **Fast** - native WASM performance
 - **Familiar** - standard PostgreSQL, not a subset
 - **Educational** - great for learning SQL and search techniques
 
 ### Why Goober?
+
 - **Tiny** - only 1KB vs styled-components (~16KB)
 - **Fast** - minimal runtime overhead
 - **Familiar** - same API as styled-components
 - **Setup** - just `setup(createElement)`, no provider needed
 
 ### Why React Context?
+
 - **Simple** - no external dependencies (Redux, Zustand, etc.)
 - **Type-safe** - full TypeScript support
 - **Sufficient** - app complexity doesn't warrant heavy state management
@@ -209,17 +221,20 @@ bun run preview    # Preview production build
 ## 🔧 Working With This Codebase
 
 ### Adding a New Search Method
+
 1. Create implementation in `src/search/`
 2. Add result state to `search.provider.tsx`
 3. Add to parallel search execution in `performSearch()`
 4. Add panel to grid in `AppShell.tsx`
 
 ### Adding a Core Component
+
 1. Create in `src/components/core/`
 2. Export from `src/components/core/index.ts`
 3. Use consistent height/spacing with existing components
 
 ### Modifying Database Schema
+
 1. Update `src/constants/schema.constant.ts`
 2. Update types in `src/types/search.types.ts`
 3. May need to clear and re-seed database
@@ -237,6 +252,7 @@ bun run preview    # Preview production build
 ### ⚠️ IMPORTANT: Keep This Document Updated
 
 **After making ANY changes to the codebase, you MUST:**
+
 1. Review if the changes affect this documentation
 2. Update relevant sections (architecture, dependencies, design decisions, etc.)
 3. Keep the file accurate and up-to-date
@@ -250,4 +266,3 @@ This ensures future agents (and humans) have accurate information about the proj
 - [React Compiler](https://react.dev/learn/react-compiler)
 - [Goober Documentation](https://goober.js.org/)
 - [PostgreSQL Full-Text Search](https://www.postgresql.org/docs/current/textsearch.html)
-
