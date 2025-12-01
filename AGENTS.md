@@ -153,19 +153,23 @@ All three searches run **in parallel** when the user clicks "Search All".
    - Ready for vector extensions (pgvector) in future
 
 3. **Seeding**:
-   - Default: 1000 fake documents via faker
+   - **3,348 real Wikipedia articles** about art history (from 377 Wikipedia pages)
+   - Articles are chunked into ~500-word segments for realistic search scenarios
+   - Topics include: art movements, famous artists, techniques, museums, concepts, historical periods, and iconic artworks
    - Batch inserts (100 at a time) for performance
    - Can clear and re-seed on demand
+   - Dataset generated via `scripts/generate-dataset.ts` (10 MB JSON file)
 
 ## 🚀 Infrastructure
 
 ### Development
 
 ```bash
-bun install        # Install dependencies
-bun run dev        # Start dev server (port 5173)
-bun run build      # Build for production
-bun run preview    # Preview production build
+bun install              # Install dependencies
+bun run generate-dataset # Generate Wikipedia dataset (run once)
+bun run dev              # Start dev server (port 3000)
+bun run build            # Build for production
+bun run preview          # Preview production build
 ```
 
 ### Deployment
@@ -217,6 +221,44 @@ bun run preview    # Preview production build
 - **Type-safe** - full TypeScript support
 - **Sufficient** - app complexity doesn't warrant heavy state management
 - **React Compiler friendly** - automatic optimizations work well
+
+## 🎨 Dataset Information
+
+### Current Dataset: Art History Wikipedia Articles
+
+**Content**: 3,348 documents from 377 Wikipedia articles covering:
+
+- **Art Movements** (68 topics): Renaissance, Baroque, Impressionism, Cubism, Surrealism, Expressionism, Fauvism, Arte Povera, Fluxus, De Stijl, Street art, etc.
+- **Artists** (109 artists): Leonardo da Vinci, Van Gogh, Picasso, Monet, Frida Kahlo, Hilma af Klint, Botticelli, Raphael, Goya, Turner, Kandinsky, Pollock, Rothko, Basquiat, Banksy, Ai Weiwei, etc.
+- **Techniques** (73 techniques): Oil painting, Sculpture, Photography, Fresco, Encaustic painting, Mosaic, Stained glass, Tapestry, Video art, Sound art, Daguerreotype, etc.
+- **Museums** (46 museums): Louvre, Metropolitan Museum of Art, British Museum, MoMA, Getty Center, Art Institute of Chicago, Musée d'Orsay, Van Gogh Museum, etc.
+- **Concepts** (76 concepts): Color theory, Perspective, Chiaroscuro, Aesthetics, Golden ratio, Symmetry, Art market, Outsider art, Sublime, Kitsch, Camp, etc.
+- **Historical Periods** (28 periods): Prehistoric art, Ancient Greek art, Byzantine art, Medieval art, Gothic art, Dutch Golden Age, Victorian painting, Islamic art, African art, etc.
+- **Iconic Artworks** (40 artworks): Mona Lisa, Sistine Chapel, The Starry Night, Guernica, American Gothic, Nighthawks, Campbell's Soup Cans, etc.
+
+**Chunking Strategy**: Articles are split into ~500-word chunks to simulate real-world document retrieval scenarios where large documents are broken into searchable segments.
+
+**Example Searches to Try**:
+
+- "Impressionism painting" - Find impressionist art content
+- "Leonardo da Vinci Renaissance" - Cross-topic search
+- "Picasso Cubism" - Artist and movement
+- "museum collection" - Find museum-related content
+- "color theory composition" - Art concepts
+- "Van Gogh sunflowers" - Artist and specific work
+
+### Regenerating the Dataset
+
+```bash
+bun run generate-dataset
+```
+
+This will fetch fresh content from Wikipedia. The script is configured to:
+
+- Fetch from predefined art topics
+- Chunk articles into ~500 words
+- Add rate limiting (100ms between requests) to be respectful to Wikipedia
+- Save to `src/data/art-history-dataset.json`
 
 ## 🔧 Working With This Codebase
 

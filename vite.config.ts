@@ -14,4 +14,10 @@ export default defineConfig(({ command }) => ({
   server: {
     port: 3000,
   },
+  optimizeDeps: {
+    exclude: ['@electric-sql/pglite'],
+  },
+  build: {
+    target: 'esnext',
+  },
 }));
