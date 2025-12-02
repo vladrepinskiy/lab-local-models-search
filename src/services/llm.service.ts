@@ -13,7 +13,7 @@ let isInitializing = false;
 let initializationError: Error | null = null;
 let progressCallback: ProgressCallback | null = null;
 
-const MODEL_ID = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
+const MODEL_ID = 'Llama-3.2-3B-Instruct-q4f32_1-MLC';
 
 const initializeLLMEngine = async (
   onProgress?: ProgressCallback
@@ -100,12 +100,13 @@ export const initializeLLM = async (
 
 // Helper: Create prompt for query expansion
 const createExpansionPrompt = (query: string): string => {
-  return `Expand this search query with synonyms and related terms. Return a comma-separated list of 4-8 keywords. Include the original query first.
+  return `List 3-5 synonyms or related terms for: "${query}"
 
-Query: "${query}"
+Format: word1, word2, word3, word4, word5
 
-Return only keywords separated by commas, like this:
-original query, synonym1, synonym2, related term1, related term2`;
+Example:
+Input: "paris"
+Output: paris, france, eiffel tower, louvre, french capital`;
 };
 
 // Helper: Generate response from LLM
@@ -120,12 +121,17 @@ const generateLLMResponse = async (
   const response = await engine.chat.completions.create({
     messages: [
       {
+        role: 'system',
+        content:
+          'You are a search assistant. Return only comma-separated keywords, no explanations.',
+      },
+      {
         role: 'user',
         content: prompt,
       },
     ],
-    temperature: 0.2,
-    max_tokens: 100,
+    temperature: 0.1, // Lower temperature for more focused output
+    max_tokens: 50, // Shorter limit to prevent drift
   });
   const generationTime = performance.now() - generationStartTime;
   console.log(
@@ -164,8 +170,11 @@ const cleanResponseText = (response: string): string => {
     .replace(/```json\s*/gi, '')
     .replace(/```\s*/g, '')
     .replace(/^Keywords?:\s*/i, '')
+    .replace(/^Output:\s*/i, '')
     .replace(/^Expanded query:\s*/i, '')
+    .replace(/^Original query:.*$/im, '') // Remove "Original query: ..." lines
     .replace(/\[|\]/g, '')
+    .split('\n')[0] // Take only first line to avoid drift
     .trim();
 };
 
