@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { styled } from 'goober';
 import { PGlite } from '@electric-sql/pglite';
 import { Repl } from '@electric-sql/pglite-repl';
-import { getDB } from '../db/db';
+import { styled } from 'goober';
+import { useEffect, useState } from 'react';
+import { dbService } from '../services/db.service';
 import { Button } from './core';
 
 export const DBRepl = () => {
@@ -11,7 +11,7 @@ export const DBRepl = () => {
 
   useEffect(() => {
     const initDB = async () => {
-      const instance = await getDB();
+      const instance = await dbService.getDB();
       setDb(instance);
     };
     initDB();

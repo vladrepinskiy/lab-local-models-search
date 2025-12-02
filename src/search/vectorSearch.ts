@@ -1,29 +1,66 @@
-import type { SearchResult } from '../types/search.types';
+import { dbService } from '../services/db.service';
+import { generateEmbedding } from '../services/embedding.service';
+import type { SearchResult, ResultDocument } from '../types/search.types';
 
-/**
- * Perform vector similarity search (stub for future implementation)
- * Will be implemented in later milestones with actual embeddings
- */
 export const performVectorSearch = async (
   query: string,
-  _limit: number = 10
+  limit: number = 10
 ): Promise<SearchResult> => {
   const startTime = performance.now();
 
-  // TODO: Implement actual vector search
-  // 1. Generate embedding for query
-  // 2. Perform similarity search against document embeddings
-  // 3. Return ranked results
+  try {
+    if (!query.trim()) {
+      return {
+        documents: [],
+        totalCount: 0,
+        executionTimeMs: 0,
+        query,
+        mode: 'vector',
+      };
+    }
 
-  console.warn('Vector search not yet implemented');
+    // Generate embedding for the query
+    const queryEmbedding = await generateEmbedding(query);
 
-  const endTime = performance.now();
+    // Perform vector similarity search using cosine distance
+    // Lower distance = more similar (0 = identical, 2 = opposite)
+    const sql = `
+      SELECT 
+        id,
+        title,
+        content,
+        (1 - (embedding <=> $1::vector)) as score
+      FROM documents
+      WHERE embedding IS NOT NULL
+      ORDER BY embedding <=> $1::vector
+      LIMIT $2;
+    `;
 
-  return {
-    documents: [],
-    totalCount: 0,
-    executionTimeMs: endTime - startTime,
-    query,
-    mode: 'vector',
-  };
+    const embeddingString = `[${queryEmbedding.join(',')}]`;
+    const documents = await dbService.executeQuery<ResultDocument>(sql, [
+      embeddingString,
+      limit,
+    ]);
+
+    const endTime = performance.now();
+    const executionTimeMs = endTime - startTime;
+
+    return {
+      documents,
+      totalCount: documents.length,
+      executionTimeMs,
+      query,
+      mode: 'vector',
+    };
+  } catch (error) {
+    console.error('Vector search failed:', error);
+    const endTime = performance.now();
+    return {
+      documents: [],
+      totalCount: 0,
+      executionTimeMs: endTime - startTime,
+      query,
+      mode: 'vector',
+    };
+  }
 };

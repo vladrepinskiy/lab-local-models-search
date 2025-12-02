@@ -27,6 +27,7 @@ This is an educational/experimental application that allows users to:
 
 - `@electric-sql/pglite` - In-browser PostgreSQL database
 - `@electric-sql/pglite-repl` - Interactive SQL console component
+- `@xenova/transformers` - In-browser ML models (embeddings generation)
 - `@faker-js/faker` - Generate realistic fake data for seeding
 - `goober` - Lightweight CSS-in-JS
 - `babel-plugin-react-compiler` - Automatic React optimizations
@@ -57,12 +58,14 @@ src/
 ├── hooks/               # Custom React hooks
 │   ├── useDatabase.ts   # Access DB context
 │   └── useSearch.ts     # Access search context
+├── services/            # Business logic services
+│   └── embedding.service.ts  # Transformers.js embedding generation
 ├── db/                  # Database logic
 │   ├── db.ts           # PGlite initialization & helpers
 │   └── seed.ts         # Seed/clear operations
 ├── search/              # Search implementations
 │   ├── keywordSearch.ts    # PostgreSQL full-text search (implemented)
-│   ├── vectorSearch.ts     # Embedding-based search (stub)
+│   ├── vectorSearch.ts     # Embedding-based search (implemented)
 │   └── llmSearch.ts        # LLM-powered search (stub)
 ├── constants/           # Constant values
 │   ├── schema.constant.ts  # SQL DDL statements
@@ -85,11 +88,36 @@ src/
 
 **Current Implementation**:
 
-- **Keyword Search**: PostgreSQL GIN full-text search (working)
-- **Vector Search**: Placeholder for embedding-based similarity search
+- **Keyword Search**: PostgreSQL GIN full-text search (implemented)
+- **Vector Search**: pgvector-based semantic similarity search with Transformers.js embeddings (implemented)
 - **LLM Search**: Placeholder for LLM-powered semantic search
 
 All three searches run **in parallel** when the user clicks "Search All".
+
+#### Vector Search Details
+
+**Embedding Model**: `Xenova/all-MiniLM-L6-v2`
+
+- 384-dimensional embeddings
+- ~23MB model download (first time only, cached in browser after)
+- Runs entirely client-side via ONNX Runtime Web
+- Fast inference suitable for real-time search
+
+**Implementation**:
+
+- Embeddings are pre-computed during dataset generation (run `bun run generate-dataset`)
+- Combined title + content text is embedded for each document
+- Pre-computed embeddings stored in JSON file, loaded during seeding (fast!)
+- Search queries are embedded on-the-fly using the same model (in browser)
+- pgvector's cosine distance operator (`<=>`) finds similar documents
+- HNSW index enables fast approximate nearest neighbor search
+
+**Performance**:
+
+- Dataset generation: ~30-40 minutes for 3,348 documents (one-time, run with `bun run generate-dataset`)
+- Database seeding: ~10-30 seconds (embeddings loaded from JSON file)
+- Query embedding: ~50-200ms per search (in browser)
+- Vector similarity search: <100ms with HNSW index
 
 ## 🎨 Design Decisions
 
@@ -147,18 +175,20 @@ All three searches run **in parallel** when the user clicks "Search All".
    - Full PostgreSQL feature set (triggers, full-text search, etc.)
 
 2. **Schema**:
-   - Single `documents` table with title, content, metadata
+   - Single `documents` table with title, content, metadata, and embedding
    - GIN index for full-text search
+   - HNSW index for vector similarity search (cosine distance)
    - JSONB metadata field for flexible data
-   - Ready for vector extensions (pgvector) in future
+   - pgvector extension enabled for 384-dimensional embeddings
 
 3. **Seeding**:
    - **3,348 real Wikipedia articles** about art history (from 377 Wikipedia pages)
    - Articles are chunked into ~500-word segments for realistic search scenarios
    - Topics include: art movements, famous artists, techniques, museums, concepts, historical periods, and iconic artworks
-   - Batch inserts (100 at a time) for performance
+   - **Embeddings are pre-computed** during dataset generation (run `bun run generate-dataset`)
+   - Embeddings stored in the JSON file, so seeding is fast (~seconds instead of hours)
    - Can clear and re-seed on demand
-   - Dataset generated via `scripts/generate-dataset.ts` (10 MB JSON file)
+   - Dataset generated via `scripts/generate-dataset.ts` (includes pre-computed embeddings)
 
 ## 🚀 Infrastructure
 
@@ -185,11 +215,11 @@ bun run preview          # Preview production build
 
 ## 🔮 Future Enhancements
 
-### Planned (Stubs Already Exist)
+### Planned
 
-1. **Vector Search**: Integrate embeddings model + pgvector
-2. **LLM Search**: Integrate web-llm for client-side LLM inference
-3. **Hybrid Search**: Combine keyword + vector for best results
+1. **LLM Search**: Integrate web-llm for client-side LLM inference
+2. **Hybrid Search**: Combine keyword + vector for best results
+3. **Reranking**: Add cross-encoder reranking for better precision
 
 ### Potential Additions
 
@@ -198,6 +228,8 @@ bun run preview          # Preview production build
 - Search history
 - Custom scoring algorithms
 - Performance benchmarking tools
+- Different embedding models (comparison)
+- Query expansion and refinement
 
 ## 💡 Key Insights
 

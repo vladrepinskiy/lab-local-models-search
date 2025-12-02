@@ -1,5 +1,5 @@
-import { executeQuery } from '../db/db';
-import type { SearchResult, ResultDocument } from '../types/search.types';
+import { dbService } from '../services/db.service';
+import type { ResultDocument, SearchResult } from '../types/search.types';
 
 //Perform a full-text keyword search using PostgreSQL's built-in FTS
 export const performKeywordSearch = async (
@@ -35,7 +35,10 @@ export const performKeywordSearch = async (
       LIMIT $2;
     `;
 
-    const documents = await executeQuery<ResultDocument>(sql, [query, limit]);
+    const documents = await dbService.executeQuery<ResultDocument>(sql, [
+      query,
+      limit,
+    ]);
 
     const endTime = performance.now();
     const executionTimeMs = endTime - startTime;

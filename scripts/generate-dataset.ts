@@ -1,5 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { performance } from 'perf_hooks';
+import { pipeline, env } from '@xenova/transformers';
+
+// Configure Transformers.js for Node.js environment
+env.allowLocalModels = false;
+env.useBrowserCache = false;
 
 interface WikipediaArticle {
   title: string;
@@ -18,6 +24,7 @@ interface Document {
     sourceUrl: string;
     wordCount: number;
   };
+  embedding?: number[];
 }
 
 const ART_TOPICS = {
@@ -476,9 +483,6 @@ const ART_TOPICS = {
   ],
 };
 
-/**
- * Fetch a Wikipedia article
- */
 const fetchWikipediaArticle = async (
   title: string
 ): Promise<WikipediaArticle | null> => {
@@ -505,9 +509,6 @@ const fetchWikipediaArticle = async (
   }
 };
 
-/**
- * Chunk text into smaller pieces (max 500 words per chunk)
- */
 const chunkText = (text: string, maxWords: number = 500): string[] => {
   // Split into sentences
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
@@ -533,9 +534,6 @@ const chunkText = (text: string, maxWords: number = 500): string[] => {
   return chunks.length > 0 ? chunks : [text];
 };
 
-/**
- * Convert article to chunked documents
- */
 const articleToDocuments = (
   article: WikipediaArticle,
   category: string
@@ -559,9 +557,72 @@ const articleToDocuments = (
   }));
 };
 
-/**
- * Main generation function
- */
+const generateEmbeddings = async (
+  documents: Document[]
+): Promise<Document[]> => {
+  console.log('\n🧠 Generating embeddings for documents...');
+  console.log(
+    `   This will take a while (~${Math.ceil(documents.length / 10)} minutes)...`
+  );
+  console.log('   Loading embedding model (Xenova/all-MiniLM-L6-v2)...\n');
+
+  const startTime = performance.now();
+
+  // Load the embedding model
+  const extractor = await pipeline(
+    'feature-extraction',
+    'Xenova/all-MiniLM-L6-v2'
+  );
+
+  console.log('   Model loaded! Generating embeddings...\n');
+
+  // Process documents in batches to show progress
+  const batchSize = 10;
+  const documentsWithEmbeddings: Document[] = [];
+
+  for (let i = 0; i < documents.length; i += batchSize) {
+    const batch = documents.slice(i, i + batchSize);
+
+    // Generate embeddings for the batch
+    const batchPromises = batch.map(async (doc) => {
+      try {
+        // Combine title and content for embedding
+        const text = `${doc.title}\n${doc.content}`;
+        const output = await extractor(text, {
+          pooling: 'mean',
+          normalize: true,
+        });
+
+        const embedding = Array.from(output.data as Float32Array);
+        return { ...doc, embedding };
+      } catch (error) {
+        console.error(`   ✗ Failed to generate embedding for: ${doc.title}`);
+        return { ...doc, embedding: undefined };
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    documentsWithEmbeddings.push(...batchResults);
+
+    // Show progress every 100 documents
+    if ((i + batchSize) % 100 === 0 || i + batchSize >= documents.length) {
+      const elapsed = (performance.now() - startTime) / 1000;
+      const rate = (i + batchSize) / elapsed;
+      const remaining = (documents.length - i - batchSize) / rate;
+      console.log(
+        `   Progress: ${Math.min(i + batchSize, documents.length)}/${documents.length} documents (${rate.toFixed(1)} docs/sec, ~${Math.ceil(remaining / 60)} min remaining)`
+      );
+    }
+  }
+
+  const endTime = performance.now();
+  console.log(
+    `\n✅ Embeddings generated in ${((endTime - startTime) / 1000 / 60).toFixed(1)} minutes!`
+  );
+
+  return documentsWithEmbeddings;
+};
+
 const generateDataset = async () => {
   console.log('🎨 Fetching art history articles from Wikipedia...\n');
 
@@ -592,6 +653,9 @@ const generateDataset = async () => {
     console.log();
   }
 
+  // Generate embeddings for all documents
+  const documentsWithEmbeddings = await generateEmbeddings(allDocuments);
+
   // Ensure data directory exists
   const dataDir = path.join(process.cwd(), 'src', 'data');
   await fs.mkdir(dataDir, { recursive: true });
@@ -601,17 +665,19 @@ const generateDataset = async () => {
     generatedAt: new Date().toISOString(),
     totalArticles,
     failedArticles,
-    totalDocuments: allDocuments.length,
-    documents: allDocuments,
+    totalDocuments: documentsWithEmbeddings.length,
+    documents: documentsWithEmbeddings,
   };
 
   const outputPath = path.join(dataDir, 'art-history-dataset.json');
   await fs.writeFile(outputPath, JSON.stringify(output, null, 2));
 
-  console.log('✅ Dataset generated!');
+  console.log('\n✅ Dataset generated!');
   console.log(`   Articles fetched: ${totalArticles}`);
   console.log(`   Failed: ${failedArticles}`);
-  console.log(`   Total documents (with chunks): ${allDocuments.length}`);
+  console.log(
+    `   Total documents (with chunks): ${documentsWithEmbeddings.length}`
+  );
   console.log(`   Saved to: ${outputPath}`);
   console.log(
     '\n💡 You can now use "Seed DB" button in the app to load this data!'

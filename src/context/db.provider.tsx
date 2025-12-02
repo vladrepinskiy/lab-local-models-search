@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { createContext, useEffect, useState } from 'react';
-import { checkDBStatus } from '../db/db';
-import { clearDatabase, seedDatabase } from '../db/seed';
+import { dbService } from '../services/db.service';
 import type { DBStatus } from '../types/search.types';
 
 export interface DBContextValue {
@@ -28,7 +27,7 @@ export const DBProvider = ({ children }: DBProviderProps) => {
 
   const refreshStatus = async () => {
     try {
-      const status = await checkDBStatus();
+      const status = await dbService.checkStatus();
 
       if (!status.exists) {
         setDbStatus('unknown');
@@ -50,7 +49,7 @@ export const DBProvider = ({ children }: DBProviderProps) => {
   const handleSeedDB = async () => {
     setSeeding(true);
     try {
-      const count = await seedDatabase();
+      const count = await dbService.seed();
       setDocCount(count);
       setDbStatus('seeded');
     } catch (error) {
@@ -63,7 +62,7 @@ export const DBProvider = ({ children }: DBProviderProps) => {
   const handleClearDB = async () => {
     setClearing(true);
     try {
-      await clearDatabase();
+      await dbService.clear();
       setDocCount(0);
       setDbStatus('empty');
     } catch (error) {
