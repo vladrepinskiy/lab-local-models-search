@@ -1,14 +1,23 @@
 import { styled } from 'goober';
-import { HeaderBar } from './HeaderBar';
-import { Panel } from './Panel';
-import { DBRepl } from './DBRepl';
+import { useLLM } from '../hooks/useLLM';
 import { useSearch } from '../hooks/useSearch';
+import { DBRepl } from './DBRepl';
+import { HeaderBar } from './HeaderBar';
+import { LoadingOverlay } from './LoadingOverlay';
+import { Panel } from './Panel';
 
 export const AppShell = () => {
   const { keywordResult, vectorResult, llmResult } = useSearch();
+  const { isLoading, progress, statusMessage } = useLLM();
 
   return (
     <>
+      <LoadingOverlay
+        isLoading={isLoading}
+        progress={progress}
+        statusMessage={statusMessage}
+        modelName="Llama-3.2-1B-Instruct-q4f16_1-MLC"
+      />
       <Container>
         <Main>
           <HeaderBar />

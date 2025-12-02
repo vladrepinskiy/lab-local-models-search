@@ -1,29 +1,64 @@
+import { expandQuery } from '../services/llm.service';
+import { performKeywordSearch } from './keywordSearch';
 import type { SearchResult } from '../types/search.types';
 
-/**
- * Perform LLM-powered search (stub for future implementation)
- * Will be implemented in later milestones with web-llm
- */
 export const performLLMSearch = async (
   query: string,
-  _limit: number = 10
+  limit: number = 10
 ): Promise<SearchResult> => {
   const startTime = performance.now();
 
-  // TODO: Implement LLM-powered search
-  // 1. Process query through LLM
-  // 2. Generate enhanced search terms or directly score documents
-  // 3. Return ranked results
+  try {
+    if (!query.trim()) {
+      return {
+        documents: [],
+        totalCount: 0,
+        executionTimeMs: 0,
+        query,
+        mode: 'llm',
+      };
+    }
 
-  console.warn('LLM search not yet implemented');
+    const expandedQuery = await expandQuery(query);
+    const keywordResult = await performKeywordSearch(expandedQuery, limit);
 
-  const endTime = performance.now();
+    const endTime = performance.now();
+    const totalTime = endTime - startTime;
 
-  return {
-    documents: [],
-    totalCount: 0,
-    executionTimeMs: endTime - startTime,
-    query,
-    mode: 'llm',
-  };
+    return {
+      ...keywordResult,
+      query, // Keep original query
+      expandedQuery, // Store expanded query
+      mode: 'llm',
+      executionTimeMs: totalTime, // Total time including expansion
+    };
+  } catch (error) {
+    console.error('[LLM Search] Search failed with error:', error);
+    console.error('[LLM Search] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Fallback to keyword search on original query
+    console.log(
+      '[LLM Search] Falling back to keyword search on original query'
+    );
+    const fallbackResult = await performKeywordSearch(query, limit);
+    const endTime = performance.now();
+    const totalTime = endTime - startTime;
+
+    console.log(
+      `[LLM Search] Fallback search completed in ${totalTime.toFixed(2)}ms`
+    );
+    console.log(
+      `[LLM Search] Fallback found ${fallbackResult.documents.length} documents`
+    );
+
+    return {
+      ...fallbackResult,
+      query,
+      mode: 'llm',
+      executionTimeMs: totalTime,
+    };
+  }
 };

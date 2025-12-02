@@ -20,6 +20,7 @@ export interface SearchResult {
   executionTimeMs: number;
   query: string;
   mode: SearchMode;
+  expandedQuery?: string;
 }
 
 // Search metrics interface
