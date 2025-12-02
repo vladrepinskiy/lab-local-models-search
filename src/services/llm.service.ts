@@ -1,4 +1,10 @@
 import { CreateMLCEngine, type MLCEngineInterface } from '@mlc-ai/web-llm';
+import {
+  TYPO_CORRECTION_PROMPT,
+  TYPO_CORRECTION_SYSTEM_MESSAGE,
+  QUERY_EXPANSION_PROMPT,
+  QUERY_EXPANSION_SYSTEM_MESSAGE,
+} from '../constants/prompts.constant';
 
 // Progress callback type
 export type ProgressCallback = (progress: {
@@ -98,15 +104,71 @@ export const initializeLLM = async (
   await initializeLLMEngine(onProgress);
 };
 
+// Helper: Detect and correct typos in query
+const detectAndCorrectTypo = async (
+  engine: MLCEngineInterface,
+  query: string
+): Promise<string> => {
+  const prompt = TYPO_CORRECTION_PROMPT(query);
+
+  console.log('[LLM Service] Checking for typos in query:', query);
+
+  try {
+    const response = await engine.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content: TYPO_CORRECTION_SYSTEM_MESSAGE,
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 30,
+    });
+
+    const corrected = response.choices[0]?.message?.content?.trim() || query;
+
+    // Clean up the response - remove quotes, explanations, etc.
+    let cleaned = corrected
+      .replace(/^Output:\s*/i, '')
+      .replace(/^Corrected:\s*/i, '')
+      .replace(/^Query:\s*/i, '')
+      .replace(/^["']|["']$/g, '')
+      .split('\n')[0]
+      .trim();
+
+    // If the cleaned result is very different or empty, use original
+    if (cleaned.length === 0 || cleaned.length < query.length * 0.5) {
+      console.log(
+        '[LLM Service] Typo correction seems invalid, using original'
+      );
+      return query;
+    }
+
+    if (cleaned.toLowerCase() !== query.toLowerCase()) {
+      console.log(
+        `[LLM Service] Typo detected and corrected: "${query}" -> "${cleaned}"`
+      );
+      return cleaned;
+    }
+
+    console.log('[LLM Service] No typo detected, using original query');
+    return query;
+  } catch (error) {
+    console.warn(
+      '[LLM Service] Typo detection failed, using original query:',
+      error
+    );
+    return query;
+  }
+};
+
 // Helper: Create prompt for query expansion
 const createExpansionPrompt = (query: string): string => {
-  return `List 3-5 synonyms or related terms for: "${query}"
-
-Format: word1, word2, word3, word4, word5
-
-Example:
-Input: "paris"
-Output: paris, france, eiffel tower, louvre, french capital`;
+  return QUERY_EXPANSION_PROMPT(query);
 };
 
 // Helper: Generate response from LLM
@@ -122,8 +184,7 @@ const generateLLMResponse = async (
     messages: [
       {
         role: 'system',
-        content:
-          'You are a search assistant. Return only comma-separated keywords, no explanations.',
+        content: QUERY_EXPANSION_SYSTEM_MESSAGE,
       },
       {
         role: 'user',
@@ -309,8 +370,12 @@ export const expandQuery = async (query: string): Promise<string> => {
     const engineTime = performance.now() - engineStartTime;
     console.log(`[LLM Service] Engine ready in ${engineTime.toFixed(2)}ms`);
 
-    // Generate response
-    const prompt = createExpansionPrompt(query);
+    // Step 1: Detect and correct typos
+    const correctedQuery = await detectAndCorrectTypo(engine, query);
+    const queryToExpand = correctedQuery;
+
+    // Step 2: Generate response with expansion
+    const prompt = createExpansionPrompt(queryToExpand);
     const rawResponse = await generateLLMResponse(engine, prompt);
 
     let keywords = parseResponseToKeywords(rawResponse);
@@ -325,12 +390,16 @@ export const expandQuery = async (query: string): Promise<string> => {
       return query;
     }
 
-    keywords = ensureOriginalQuery(keywords, query);
+    keywords = ensureOriginalQuery(keywords, queryToExpand);
     const uniqueKeywords = removeDuplicates(keywords);
 
     console.log('[LLM Service] Final keywords:', uniqueKeywords);
+    const originalQueryDisplay =
+      queryToExpand !== query
+        ? `${query} (corrected to: ${queryToExpand})`
+        : query;
     console.log(
-      `[LLM Service] Query expansion successful: "${query}" -> ${uniqueKeywords.length} keywords`
+      `[LLM Service] Query expansion successful: "${originalQueryDisplay}" -> ${uniqueKeywords.length} keywords`
     );
 
     // Format and return

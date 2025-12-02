@@ -16,7 +16,7 @@ export const AppShell = () => {
         isLoading={isLoading}
         progress={progress}
         statusMessage={statusMessage}
-        modelName="Llama-3.2-1B-Instruct-q4f16_1-MLC"
+        modelName="Llama-3.2-3B-Instruct-q4f32_1-MLC"
       />
       <Container>
         <Main>

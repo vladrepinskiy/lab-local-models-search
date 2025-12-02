@@ -32,7 +32,10 @@ export const performKeywordSearch = async (
         .split('|')
         .map((k) => k.trim())
         .filter((k) => k.length > 0);
-      console.log('[Keyword Search] Expanded query detected with keywords:', keywords);
+      console.log(
+        '[Keyword Search] Expanded query detected with keywords:',
+        keywords
+      );
 
       // Construct to_tsquery with OR operators
       // to_tsquery expects: 'word1' | 'word2' | 'word3'
@@ -41,7 +44,7 @@ export const performKeywordSearch = async (
         // Remove any existing quotes and escape special characters
         // to_tsquery special chars: & | ! ( ) : * ' "
         let cleaned = keyword.replace(/['"]/g, '').trim();
-        
+
         // If keyword contains spaces, wrap in quotes
         if (cleaned.includes(' ')) {
           // Escape single quotes for SQL
@@ -53,7 +56,7 @@ export const performKeywordSearch = async (
           return cleaned;
         }
       });
-      
+
       // Join with OR operator (|) for to_tsquery
       const tsquery = tsqueryParts.join(' | ');
 
@@ -98,7 +101,10 @@ export const performKeywordSearch = async (
     console.log('[Keyword Search] Executing SQL query:', sql);
     console.log('[Keyword Search] Query parameters:', queryParams);
 
-    const documents = await dbService.executeQuery<ResultDocument>(sql, queryParams);
+    const documents = await dbService.executeQuery<ResultDocument>(
+      sql,
+      queryParams
+    );
 
     console.log(
       `[Keyword Search] PGLite returned ${documents.length} documents`

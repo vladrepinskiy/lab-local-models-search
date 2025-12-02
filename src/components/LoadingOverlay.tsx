@@ -118,4 +118,3 @@ const ProgressText = styled('div')`
   font-size: 12px;
   color: #666;
 `;
-
